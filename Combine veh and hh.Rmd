@@ -1,0 +1,15 @@
+---
+title: "Combine veh and hh"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+* Read csv files
+```{r}
+vehpub = read.csv("vehpub.csv")
+hhpub = read.csv("hhpub.csv")
+```
+
