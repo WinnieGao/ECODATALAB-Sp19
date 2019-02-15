@@ -1,0 +1,41 @@
+---
+title: "2/14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+* Read csv file
+```{r}
+vehpub = read.csv("vehpub.csv")
+hhpub = read.csv("hhpub.csv")
+```
+
+* extract bestmile and houseid
+```{r}
+bestmile = vehpub$BESTMILE
+houseid = vehpub$HOUSEID
+```
+
+* Aggregate bestmile 
+```{r}
+head(vehpub)
+head(hhpub)
+vehpub[,1:10]
+vehpub$BESTMILE
+
+for(i in 1:nrow(hhpub)) {
+  hhpub$BESTMILE[i] = sum(vehpub[vehpub$HOUSEID == hhpub[i,1],"BESTMILE"])
+}
+
+
+```
+
+* Recode HHFAMNIC
+```{r}
+hhpub[hhpub$HHFAMINC < 0,]$HHFAMINC = NA
+hhpub[hhpub$HHFAMINC ==7,]
+```
+
