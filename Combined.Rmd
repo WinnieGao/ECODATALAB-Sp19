@@ -1,0 +1,70 @@
+---
+title: "Combined"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+* Read csv file
+```{r}
+veh = read.csv("../URAP2/2017 NHTS/vehpub.csv")
+hh = read.csv("../URAP2/2017 NHTS/hhpub.csv")
+```
+
+* Aggregate bestmile 
+```{r}
+for(i in 1:nrow(hh)){
+  hh$BESTMILE[i]=sum(veh[veh$HOUSEID==hh[i,1],"BESTMILE"])
+} ##we put "BESTMILE" in "hh"
+write.csv(hh,"recs.csv")
+```
+
+* National Household Travel Survey
+
+We will created new dummy variables for races. When we use a regression model, we have to choose the baseline dummy to prevent "Multicollinearity". 
+
+Supporting info: https://analyticstraining.com/understanding-dummy-variable-traps-regression/
+
+
+First, we set new variables and put 1 in "refused". 
+```{r}
+recs=read.csv("recs.csv")
+
+for (i in 1:9){
+  recs[,60+i]=0
+}
+
+names(recs)[61:69]=c("refused","white","black or african american","asian","american indian or alaska native",
+                     "native hawaiian or other pacific islander", "multiple respones selected", "others","hispanic")
+
+
+recs[recs$HH_RACE==-7,61]=1
+
+```
+
+
+Next, we put 1 in each variable corresponding to "HH_RACE"
+```{r}
+for(i in 1:6){
+  recs[recs$HH_RACE==i,61+i]=1
+}
+```
+
+```{r}
+recs[recs$HH_RACE==97,68]=1
+```
+
+For "Don't Know" in "HH_RACE", we put NA.
+```{r}
+recs[recs$HH_RACE==-8,c(61:69)]=NA
+```
+
+
+We set the hispanic variable. Notice that it is possible that both hispanic and white take 1 since hispanic is not a race but a cultural group of people.
+```{r}
+recs[recs$HH_HISP==-7,61]=1
+recs[recs$HH_HISP==-8,c(61:69)]=NA
+recs[recs$HH_HISP==1,69]=1
+```
