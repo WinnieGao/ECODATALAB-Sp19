@@ -9,34 +9,34 @@ knitr::opts_chunk$set(echo = TRUE)
 
 * Read csv file
 ```{r}
-veh = read.csv("vehpub.csv")
-hh = read.csv("hhpub.csv")
+#veh = read.csv("vehpub.csv")
+#hh = read.csv("hhpub.csv")
 ```
 
 * Recode for HHFAMNIC
 ```{r}
-AVGINCOME<-hh$HHFAMINC
-AVGINCOME[hh$HHFAMINC == '1'] = 10000
-AVGINCOME[hh$HHFAMINC == '2'] = (10000+14999)/2
-AVGINCOME[hh$HHFAMINC == '3'] = (15000+24499)/2
-AVGINCOME[hh$HHFAMINC == '4'] = (25000+34999)/2
-AVGINCOME[hh$HHFAMINC == '5'] = (35000+49999)/2
-AVGINCOME[hh$HHFAMINC == '6'] = (50000+74999)/2
-AVGINCOME[hh$HHFAMINC == '7'] = (75000+99999)/2
-AVGINCOME[hh$HHFAMINC == '8'] = (100000+124999)/2
-AVGINCOME[hh$HHFAMINC == '9'] = (125000+149999)/2
-AVGINCOME[hh$HHFAMINC == '10'] = (150000+199999)/2
-AVGINCOME[hh$HHFAMINC == '11'] = 200000
-AVGINCOME[hh$HHFAMINC < 0] = NA
-hh$HHFAMINC = AVGINCOME
+#AVGINCOME<-hh$HHFAMINC
+#AVGINCOME[hh$HHFAMINC == '1'] = 10000
+#AVGINCOME[hh$HHFAMINC == '2'] = (10000+14999)/2
+#AVGINCOME[hh$HHFAMINC == '3'] = (15000+24499)/2
+#AVGINCOME[hh$HHFAMINC == '4'] = (25000+34999)/2
+#AVGINCOME[hh$HHFAMINC == '5'] = (35000+49999)/2
+#AVGINCOME[hh$HHFAMINC == '6'] = (50000+74999)/2
+#AVGINCOME[hh$HHFAMINC == '7'] = (75000+99999)/2
+#AVGINCOME[hh$HHFAMINC == '8'] = (100000+124999)/2
+#AVGINCOME[hh$HHFAMINC == '9'] = (125000+149999)/2
+#AVGINCOME[hh$HHFAMINC == '10'] = (150000+199999)/2
+#AVGINCOME[hh$HHFAMINC == '11'] = 200000
+#AVGINCOME[hh$HHFAMINC < 0] = NA
+#hh$HHFAMINC = AVGINCOME
 ```
 
 * Aggregate bestmile 
 ```{r}
-for(i in 1:nrow(hh)){
-  hh$BESTMILE[i]=sum(veh[veh$HOUSEID==hh[i,1],"BESTMILE"])
-} ##we put "BESTMILE" in "hh"
-write.csv(hh,"recs.csv")
+#for(i in 1:nrow(hh)){
+#  hh$BESTMILE[i]=sum(veh[veh$HOUSEID==hh[i,1],"BESTMILE"])
+#} ##we put "BESTMILE" in "hh"
+#write.csv(hh,"recs.csv")
 ```
 
 * National Household Travel Survey
@@ -86,3 +86,21 @@ recs[recs$HH_HISP==-7,61]=1
 recs[recs$HH_HISP==-8,c(61:69)]=NA
 recs[recs$HH_HISP==1,69]=1
 ```
+
+* selecting variables appeared in census data
+```{r}
+dat <- data.frame(recs$DRVRCNT, recs$CNTTDHH, recs$HHFAMINC, recs$HHSIZE, recs$HHVEHCNT, recs$white, recs$BESTMILE)
+head(dat)
+colnames(dat) = c("DRVRCNT", "CNTTDHH", "HHFAMINC", "HHSIZE", "HHVEHCNT", "white", "bestmile")
+```
+
+* linear regression model
+```{r}
+library(MASS)
+dat = na.omit(dat)
+length(dat[,1])
+state.null <- lm(bestmile ~ 1, data = dat)
+state.full <- lm(bestmile ~ DRVRCNT + CNTTDHH + HHFAMINC + HHSIZE + HHVEHCNT + white, data=dat)
+state.step <- stepAIC(state.null, scope = formula(state.full),  direction = "forward")
+```
+

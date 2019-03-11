@@ -1,0 +1,107 @@
+---
+title: "Combined"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(MASS)
+```
+
+* Read csv file
+```{r}
+veh = read.csv("vehpub.csv")
+hh = read.csv("hhpub.csv")
+```
+
+* Recode for HHFAMNIC
+```{r}
+AVGINCOME = hh$HHFAMINC
+AVGINCOME[hh$HHFAMINC == '1'] = 10000
+AVGINCOME[hh$HHFAMINC == '2'] = (10000+14999)/2
+AVGINCOME[hh$HHFAMINC == '3'] = (15000+24999)/2
+AVGINCOME[hh$HHFAMINC == '4'] = (25000+34999)/2
+AVGINCOME[hh$HHFAMINC == '5'] = (35000+49999)/2
+AVGINCOME[hh$HHFAMINC == '6'] = (50000+74999)/2
+AVGINCOME[hh$HHFAMINC == '7'] = (75000+99999)/2
+AVGINCOME[hh$HHFAMINC == '8'] = (100000+124999)/2
+AVGINCOME[hh$HHFAMINC == '9'] = (125000+149999)/2
+AVGINCOME[hh$HHFAMINC == '10'] = (150000+199999)/2#
+AVGINCOME[hh$HHFAMINC == '11'] = 200000
+AVGINCOME[hh$HHFAMINC < 0] = NA
+hh$HHFAMINC = AVGINCOME
+```
+
+* Aggregate bestmile 
+```{r}
+bestmile = data.frame("HOUSEID" = veh$HOUSEID, "BESTMILE" = veh$BESTMILE)
+bestmile = aggregate(bestmile$BESTMILE, by=list(bestmile$HOUSEID), FUN=sum)
+names(bestmile) = c("HOUSEID", "BESTMILE")
+recs = data.frame(merge(hh, bestmile, by = "HOUSEID"))
+```
+
+* National Household Travel Survey
+
+We will created new dummy variables for races. When we use a regression model, we have to choose the baseline dummy to prevent "Multicollinearity". 
+
+Supporting info: https://analyticstraining.com/understanding-dummy-variable-traps-regression/
+
+
+First, we set new variables and put 1 in "refused". 
+```{r}
+for (i in 0:8){
+  recs[, 60+i] = 0
+}
+
+names(recs)[60:68]=c("refused","white","black or african american","asian","american indian or alaska native",
+                     "native hawaiian or other pacific islander", "multiple respones selected", "others","hispanic")
+
+
+recs[recs$HH_RACE==-7,60]=1
+
+```
+
+
+Next, we put 1 in each variable corresponding to "HH_RACE"
+```{r}
+for(i in 1:6){
+  recs[recs$HH_RACE==i,60+i]=1
+}
+```
+
+```{r}
+recs[recs$HH_RACE==97,67]=1
+```
+
+For "Don't Know" in "HH_RACE", we put NA.
+```{r}
+recs[recs$HH_RACE==-8,c(60:68)]=NA
+```
+
+
+We set the hispanic variable. Notice that it is possible that both hispanic and white take 1 since hispanic is not a race but a cultural group of people.
+```{r}
+recs[recs$HH_HISP==-7,60]=1
+recs[recs$HH_HISP==-8,c(60:68)]=NA
+recs[recs$HH_HISP==1,68]=1
+```
+
+
+* selecting variables appeared in census data
+```{r}
+dat <- data.frame(recs$DRVRCNT, recs$CNTTDHH, recs$HHFAMINC, recs$HHSIZE, recs$HHVEHCNT, recs$white, recs$BESTMILE)
+colnames(dat) = c("DRVRCNT", "CNTTDHH", "HHFAMINC", "HHSIZE", "HHVEHCNT", "white", "bestmile")
+```
+
+
+```{r}
+state.null <- lm(bestmile ~ 1, data = dat)
+state.full <- lm(bestmile ~ DRVRCNT + CNTTDHH + HHFAMINC + HHSIZE + HHVEHCNT + white, data=dat)
+state.step <- stepAIC(state.null, scope = formula(state.full),  direction = "forward", na.omit = TRUE)
+summary(state.step)
+```
+
