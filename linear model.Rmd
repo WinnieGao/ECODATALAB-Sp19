@@ -93,15 +93,48 @@ recs[recs$HH_HISP==1,68]=1
 
 * selecting variables appeared in census data
 ```{r}
-dat <- data.frame(recs$DRVRCNT, recs$CNTTDHH, recs$HHFAMINC, recs$HHSIZE, recs$HHVEHCNT, recs$white, recs$BESTMILE)
+dat = data.frame(recs$DRVRCNT, recs$CNTTDHH, recs$HHFAMINC, recs$HHSIZE, recs$HHVEHCNT, recs$white, recs$BESTMILE)
 colnames(dat) = c("DRVRCNT", "CNTTDHH", "HHFAMINC", "HHSIZE", "HHVEHCNT", "white", "bestmile")
 ```
 
-
+* Run linear regression model for the entire country
 ```{r}
-state.null <- lm(bestmile ~ 1, data = dat)
-state.full <- lm(bestmile ~ DRVRCNT + CNTTDHH + HHFAMINC + HHSIZE + HHVEHCNT + white, data=dat)
-state.step <- stepAIC(state.null, scope = formula(state.full),  direction = "forward", na.omit = TRUE)
+state.null = lm(bestmile ~ 1, data = dat)
+state.full = lm(bestmile ~ DRVRCNT + CNTTDHH + HHFAMINC + HHSIZE + HHVEHCNT + white, data=dat)
+dat = na.omit(dat)
+state.step = stepAIC(state.null, scope = formula(state.full),  direction = "forward")
 summary(state.step)
+```
+
+* Run linear regression models for states
+```{r}
+name = c("AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY")
+coefficient = data.frame()
+for (s in c("AK")) {
+  state = recs[recs$HHSTATE == s, ]
+  dat_state = data.frame(state$DRVRCNT, state$CNTTDHH, state$HHFAMINC, state$HHSIZE, state$HHVEHCNT, state$white, state$BESTMILE)
+  colnames(dat) = c("DRVRCNT", "CNTTDHH", "HHFAMINC", "HHSIZE", "HHVEHCNT", "white", "bestmile")
+  dat_state = na.omit(dat_state)
+  state.null = lm(bestmile ~ 1, data = dat)
+  state.full = lm(bestmile ~ DRVRCNT + CNTTDHH + HHFAMINC + HHSIZE + HHVEHCNT + white, data=dat)
+  state.step = stepAIC(state.null, scope = formula(state.full),  direction = "forward", na.omit = TRUE)
+  coeff_i = data.frame(summary(state.step)$coefficients[, "Estimate"])
+  colnames(coeff_i) = c("AK")
+  coefficient = coeff_i
+}
+
+for (s in name) {
+  state = recs[recs$HHSTATE == s, ]
+  dat_state = data.frame(state$DRVRCNT, state$CNTTDHH, state$HHFAMINC, state$HHSIZE, state$HHVEHCNT, state$white, state$BESTMILE)
+  colnames(dat) = c("DRVRCNT", "CNTTDHH", "HHFAMINC", "HHSIZE", "HHVEHCNT", "white", "bestmile")
+  dat_state = na.omit(dat_state)
+  state.null = lm(bestmile ~ 1, data = dat)
+  state.full = lm(bestmile ~ DRVRCNT + CNTTDHH + HHFAMINC + HHSIZE + HHVEHCNT + white, data=dat)
+  state.step = stepAIC(state.null, scope = formula(state.full),  direction = "forward", na.omit = TRUE)
+  coeff_i = data.frame(summary(state.step)$coefficients[, "Estimate"])
+  colnames(coeff_i) = c(s)
+  coefficient = cbind(coefficient, coeff_i)
+}
+write.csv(coefficient, "coefficient.csv")
 ```
 
