@@ -99,9 +99,9 @@ colnames(dat) = c("DRVRCNT", "CNTTDHH", "HHFAMINC", "HHSIZE", "HHVEHCNT", "white
 
 * Run linear regression model for the entire country
 ```{r}
+dat = na.omit(dat)
 state.null = lm(bestmile ~ 1, data = dat)
 state.full = lm(bestmile ~ DRVRCNT + CNTTDHH + HHFAMINC + HHSIZE + HHVEHCNT + white, data=dat)
-dat = na.omit(dat)
 state.step = stepAIC(state.null, scope = formula(state.full),  direction = "forward")
 summary(state.step)
 ```
@@ -109,32 +109,48 @@ summary(state.step)
 * Run linear regression models for states
 ```{r}
 name = c("AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY")
+sample_size = c()
+adj.r = c()
 coefficient = data.frame()
+s = "AK"
 for (s in c("AK")) {
   state = recs[recs$HHSTATE == s, ]
   dat_state = data.frame(state$DRVRCNT, state$CNTTDHH, state$HHFAMINC, state$HHSIZE, state$HHVEHCNT, state$white, state$BESTMILE)
-  colnames(dat) = c("DRVRCNT", "CNTTDHH", "HHFAMINC", "HHSIZE", "HHVEHCNT", "white", "bestmile")
+  colnames(dat_state) = c("DRVRCNT", "CNTTDHH", "HHFAMINC", "HHSIZE", "HHVEHCNT", "white", "bestmile")
   dat_state = na.omit(dat_state)
-  state.null = lm(bestmile ~ 1, data = dat)
-  state.full = lm(bestmile ~ DRVRCNT + CNTTDHH + HHFAMINC + HHSIZE + HHVEHCNT + white, data=dat)
-  state.step = stepAIC(state.null, scope = formula(state.full),  direction = "forward", na.omit = TRUE)
-  coeff_i = data.frame(summary(state.step)$coefficients[, "Estimate"])
+  sample_size = c(sample_size, nrow(dat_state))
+  state.null = lm(bestmile ~ 1, data = dat_state)
+  state.full = lm(bestmile ~ ., data=dat_state)
+  #state.step = stepAIC(state.null, scope = formula(state.full),  direction = "forward", na.omit = TRUE)
+  summary_state = summary(state.full)
+  summary_state
+  adj.r = c(adj.r, summary_state$adj.r.squared)
+  coeff_i = data.frame(summary_state$coefficients[, "Estimate"])
   colnames(coeff_i) = c("AK")
   coefficient = coeff_i
 }
+coefficient
+
 
 for (s in name) {
   state = recs[recs$HHSTATE == s, ]
   dat_state = data.frame(state$DRVRCNT, state$CNTTDHH, state$HHFAMINC, state$HHSIZE, state$HHVEHCNT, state$white, state$BESTMILE)
-  colnames(dat) = c("DRVRCNT", "CNTTDHH", "HHFAMINC", "HHSIZE", "HHVEHCNT", "white", "bestmile")
+  colnames(dat_state) = c("DRVRCNT", "CNTTDHH", "HHFAMINC", "HHSIZE", "HHVEHCNT", "white", "bestmile")
   dat_state = na.omit(dat_state)
-  state.null = lm(bestmile ~ 1, data = dat)
-  state.full = lm(bestmile ~ DRVRCNT + CNTTDHH + HHFAMINC + HHSIZE + HHVEHCNT + white, data=dat)
-  state.step = stepAIC(state.null, scope = formula(state.full),  direction = "forward", na.omit = TRUE)
-  coeff_i = data.frame(summary(state.step)$coefficients[, "Estimate"])
+  sample_size = c(sample_size, nrow(dat_state))
+  state.null = lm(bestmile ~ 1, data = dat_state)
+  state.full = lm(bestmile ~ DRVRCNT + CNTTDHH + HHFAMINC + HHSIZE + HHVEHCNT + white, data=dat_state)
+  #state.step = stepAIC(state.null, scope = formula(state.full),  direction = "forward", na.omit = TRUE)
+  summary_state = summary(state.full)
+  adj.r = c(adj.r, summary_state$adj.r.squared)
+  coeff_i = data.frame(summary_state$coefficients[, "Estimate"])
   colnames(coeff_i) = c(s)
   coefficient = cbind(coefficient, coeff_i)
 }
+coefficient[nrow(coefficient) + 1,] = sample_size
+coefficient[nrow(coefficient) + 1,] = adj.r
+rownames(coefficient) = c("(Intercept)", "HHVEHCNT", "HHSIZE", "HHFAMINC", "DRVRCNT", "CNTTDHH", "white", "sample_size", "adj.r2")
+coefficient
 write.csv(coefficient, "coefficient.csv")
 ```
 
