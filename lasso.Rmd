@@ -1,0 +1,93 @@
+---
+title: "Lasso"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(MASS)
+```
+
+```{r}
+veh = read.csv("vehpub.csv")
+hh = read.csv("hhpub.csv")
+```
+
+
+```{r}
+AVGINCOME = hh$HHFAMINC
+AVGINCOME[hh$HHFAMINC == '1'] = 10000
+AVGINCOME[hh$HHFAMINC == '2'] = (10000+14999)/2
+AVGINCOME[hh$HHFAMINC == '3'] = (15000+24999)/2
+AVGINCOME[hh$HHFAMINC == '4'] = (25000+34999)/2
+AVGINCOME[hh$HHFAMINC == '5'] = (35000+49999)/2
+AVGINCOME[hh$HHFAMINC == '6'] = (50000+74999)/2
+AVGINCOME[hh$HHFAMINC == '7'] = (75000+99999)/2
+AVGINCOME[hh$HHFAMINC == '8'] = (100000+124999)/2
+AVGINCOME[hh$HHFAMINC == '9'] = (125000+149999)/2
+AVGINCOME[hh$HHFAMINC == '10'] = (150000+199999)/2#
+AVGINCOME[hh$HHFAMINC == '11'] = 200000
+AVGINCOME[hh$HHFAMINC < 0] = NA
+hh$HHFAMINC = AVGINCOME
+```
+
+```{r}
+bestmile = data.frame("HOUSEID" = veh$HOUSEID, "BESTMILE" = veh$BESTMILE)
+bestmile = aggregate(bestmile$BESTMILE, by=list(bestmile$HOUSEID), FUN=sum)
+names(bestmile) = c("HOUSEID", "BESTMILE")
+nhts = data.frame(merge(hh, bestmile, by = "HOUSEID"))
+```
+
+```{r}
+#check NA
+#colSums(is.na(nhts))
+#fill HHFAMINC with col mean
+nhts[is.na(nhts[,"HHFAMINC"]), "HHFAMINC"] <- mean(nhts[,"HHFAMINC"], na.rm = TRUE)
+#remove HOUSEID
+nhts = within(nhts, rm(HOUSEID))
+state = nhts$HHSTATE
+nhts = within(nhts, rm(HHSTATE))
+```
+
+```{r}
+library(dummies)
+library(glmnet)
+allY = log(scale(nhts$BESTMILE, center = FALSE, scale = TRUE) + 1)
+# dummify every categorical column and create a new data frame without the y column SalePrice.
+allX = as.matrix(dummy.data.frame(nhts[, -which(names(nhts) == ("BESTMILE"))], sep = "."))
+allX = scale(allX, center = FALSE, scale = TRUE)
+```
+
+```{r}
+sample_size = c()
+r2 = c()
+fitLasso = glmnet(allX, allY, alpha = 1, family = "gaussian", lambda = 0.001)
+beta = fitLasso$beta[, "s0"]
+coeff = data.frame(beta)
+colnames(coeff) = "US"
+sample_size = c(sample_size, nrow(allX))
+r2 = c(r2, fitLasso$dev.ratio)
+```
+
+```{r}
+name = c("AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY")
+for (s in name) {
+  state_X = allX[state == s, ]
+  state_Y = allY[state == s, ]
+  fitLasso_i = glmnet(state_X, state_Y, alpha = 1, family = "gaussian", lambda = 0.001)
+  beta_i = fitLasso$beta[, "s0"]
+  coeff_i = data.frame(beta_i)
+  coeff = cbind(coeff, coeff_i)
+  sample_size = c(sample_size, nrow(state_X))
+  r2 = c(r2, fitLasso_i$dev.ratio)
+}
+coeff = rbind(coeff, sample_size, r2)
+colnames(coeff) = c("USA", name)
+rownames(coeff) = c(rownames(coeff)[1:(length(rownames(coeff)) - 2)], "Sample Size", "R square")
+write.csv(coeff, "coeff_lasso.csv")
+```
+
