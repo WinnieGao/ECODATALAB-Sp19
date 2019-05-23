@@ -1,0 +1,149 @@
+---
+title: "Lasso"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(MASS)
+```
+
+```{r}
+veh = read.csv("vehpub.csv")
+hh = read.csv("hhpub.csv")
+```
+
+
+```{r}
+AVGINCOME = hh$HHFAMINC
+AVGINCOME[hh$HHFAMINC == 1] = 10000
+AVGINCOME[hh$HHFAMINC == 2] = (10000+14999)/2
+AVGINCOME[hh$HHFAMINC == 3] = (15000+24999)/2
+AVGINCOME[hh$HHFAMINC == 4] = (25000+34999)/2
+AVGINCOME[hh$HHFAMINC == 5] = (35000+49999)/2
+AVGINCOME[hh$HHFAMINC == 6] = (50000+74999)/2
+AVGINCOME[hh$HHFAMINC == 7] = (75000+99999)/2
+AVGINCOME[hh$HHFAMINC == 8] = (100000+124999)/2
+AVGINCOME[hh$HHFAMINC == 9] = (125000+149999)/2
+AVGINCOME[hh$HHFAMINC == 10] = (150000+199999)/2
+AVGINCOME[hh$HHFAMINC == 11] = 200000
+AVGINCOME[hh$HHFAMINC < 0] = NA
+hh$HHFAMINC = AVGINCOME
+
+hh$HOMEOWN[hh$HOMEOWN != 1 & hh$HOMEOWN !=2] = NA
+
+hh$CAR[hh$CAR < 0 | hh$CAR > 4] = NA
+
+hh$HH_RACE[hh$CAR < 0 | hh$CAR > 6] = NA
+
+hh$HTPPOPDN[hh$HTPPOPDN < 0] = NA
+
+hh$HTRESDN[hh$HTRESDN < 0] = NA
+
+hh$HTEEMPDN[hh$HTEEMPDN < 0] = NA
+
+hh$HBPPOPDN[hh$HBPPOPDN < 0 ] = NA
+
+hh$HBRESDN[hh$HBRESDN < 0] = NA
+
+hh$HH_RACE[hh$HH_RACE < 0 | hh$HH_RACE == 97] = NA
+```
+
+```{r}
+bestmile = data.frame("HOUSEID" = veh$HOUSEID, "BESTMILE" = veh$BESTMILE)
+bestmile = aggregate(bestmile$BESTMILE, by=list(bestmile$HOUSEID), FUN=sum)
+names(bestmile) = c("HOUSEID", "BESTMILE")
+nhts = data.frame(merge(hh, bestmile, by = "HOUSEID"))
+```
+
+```{r}
+#check NA
+#colSums(is.na(nhts))
+#fill NA with col mean
+nhts[is.na(nhts[,"HHSIZE"]), "HHSIZE"] <- mean(nhts[,"HHSIZE"], na.rm = TRUE)
+nhts[is.na(nhts[,"HHVEHCNT"]), "HHVEHCNT"] <- mean(nhts[,"HHVEHCNT"], na.rm = TRUE)
+nhts[is.na(nhts[,"HHFAMINC"]), "HHFAMINC"] <- mean(nhts[,"HHFAMINC"], na.rm = TRUE)
+nhts[is.na(nhts[,"HTPPOPDN"]), "HTPPOPDN"] <- mean(nhts[,"HTPPOPDN"], na.rm = TRUE)
+nhts[is.na(nhts[,"HTRESDN"]), "HTRESDN"] <- mean(nhts[,"HTRESDN"], na.rm = TRUE)
+nhts[is.na(nhts[,"HTEEMPDN"]), "HTEEMPDN"] <- mean(nhts[,"HTEEMPDN"], na.rm = TRUE)
+nhts[is.na(nhts[,"HBPPOPDN"]), "HBPPOPDN"] <- mean(nhts[,"HBPPOPDN"], na.rm = TRUE)
+nhts[is.na(nhts[,"HBRESDN"]), "HBRESDN"] <- mean(nhts[,"HBRESDN"], na.rm = TRUE)
+
+#remove HOUSEID
+nhts = within(nhts, rm(HOUSEID))
+state = nhts$HHSTATE
+```
+
+```{r}
+library(dummies)
+library(glmnet)
+# dummify every categorical column and create a new data frame without the y column SalePrice.
+subset = data.frame(HOMEOWN = as.character(nhts$HOMEOWN), 
+                    HHSIZE = nhts$HHSIZE, 
+                    HHVEHCNT = nhts$HHVEHCNT, 
+                    HHFAMINC = nhts$HHFAMINC, 
+                    CAR = as.character(nhts$CAR), 
+                    URBRUR = as.character(nhts$URBRUR), 
+                    CENSUS_D = as.character(nhts$CENSUS_D), 
+                    CENSUS_R = as.character(nhts$CENSUS_R), 
+                    HH_RACE = as.character(nhts$HH_RACE), 
+                    HTPPOPDN = nhts$HTPPOPDN, 
+                    HTRESDN = nhts$HTRESDN, 
+                    HTEEMPDN = nhts$HTEEMPDN, 
+                    HBPPOPDN = nhts$HBPPOPDN, 
+                    HBRESDN = nhts$HBRESDN,
+                    BestMile = nhts$BESTMILE,
+                    weight = nhts$WTHHFIN,
+                    state = state)
+subset = na.omit(subset)
+allY = subset$BestMile
+train = within(subset, rm(BestMile, weight, state))
+allX = dummy.data.frame(train)
+head(allX)
+allX = as.matrix(allX)
+```
+
+```{r}
+sample_size = c()
+r2 = c()
+fitLasso = glmnet(allX, allY, alpha = 1, family = "gaussian", lambda = 0.01, intercept = TRUE, weights = subset$weight)
+beta = coef(fitLasso)[, "s0"]
+coeff = data.frame(beta)
+colnames(coeff) = "US"
+sample_size = c(sample_size, nrow(allX))
+r2 = c(r2, fitLasso$dev.ratio)
+```
+
+```{r}
+name = c("AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY")
+for (s in name) {
+  state_X = allX[subset$state == s, ]
+  state_Y = allY[subset$state == s]
+  weight = subset$weight[subset$state == s]
+  fitLasso_i = glmnet(state_X, state_Y, alpha = 1, family = "gaussian", lambda = 0.01, intercept = TRUE, weights = weight)
+  beta_i = coef(fitLasso_i)[, "s0"]
+  coeff_i = data.frame(beta_i)
+  coeff = cbind(coeff, coeff_i)
+  sample_size = c(sample_size, nrow(state_X))
+  r2 = c(r2, fitLasso_i$dev.ratio)
+}
+coeff = rbind(coeff, sample_size, r2)
+colnames(coeff) = c("USA", name)
+coeff = rbind(coeff, allY)
+rownames(coeff) = c(rownames(coeff)[1:(length(rownames(coeff)) - 3)],"Sample Size", "R square", "BestMile")
+```
+
+```{r}
+census = read.csv(file = "2017_1YR_STATES_CLEAN.csv", stringsAsFactors = FALSE)
+geo = data.frame("state" = tolower(name))
+geo = merge(geo, census, by.x = "state", by.y = "Geo_STUSAB")
+coeff = rbind(coeff, c(NA, geo$Geo_FIPS))
+coeff = rbind(coeff, c(NA, geo$Geo_GEOID))
+rownames(coeff) = c(rownames(coeff)[1:(length(rownames(coeff)) - 2)], "Geo_FIPS", "Geo_GEOID")
+write.csv(coeff, "lasso_coeff_withgeo.csv")
+```
+
