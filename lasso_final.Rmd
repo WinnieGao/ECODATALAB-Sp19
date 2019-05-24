@@ -56,20 +56,22 @@ bestmile = data.frame("HOUSEID" = veh$HOUSEID, "BESTMILE" = veh$BESTMILE)
 bestmile = aggregate(bestmile$BESTMILE, by=list(bestmile$HOUSEID), FUN=sum)
 names(bestmile) = c("HOUSEID", "BESTMILE")
 nhts = data.frame(merge(hh, bestmile, by = "HOUSEID"))
+head(nhts)
 ```
 
 ```{r}
 #check NA
 #colSums(is.na(nhts))
 #fill NA with col mean
-nhts[is.na(nhts[,"HHSIZE"]), "HHSIZE"] <- mean(nhts[,"HHSIZE"], na.rm = TRUE)
-nhts[is.na(nhts[,"HHVEHCNT"]), "HHVEHCNT"] <- mean(nhts[,"HHVEHCNT"], na.rm = TRUE)
-nhts[is.na(nhts[,"HHFAMINC"]), "HHFAMINC"] <- mean(nhts[,"HHFAMINC"], na.rm = TRUE)
-nhts[is.na(nhts[,"HTPPOPDN"]), "HTPPOPDN"] <- mean(nhts[,"HTPPOPDN"], na.rm = TRUE)
-nhts[is.na(nhts[,"HTRESDN"]), "HTRESDN"] <- mean(nhts[,"HTRESDN"], na.rm = TRUE)
-nhts[is.na(nhts[,"HTEEMPDN"]), "HTEEMPDN"] <- mean(nhts[,"HTEEMPDN"], na.rm = TRUE)
-nhts[is.na(nhts[,"HBPPOPDN"]), "HBPPOPDN"] <- mean(nhts[,"HBPPOPDN"], na.rm = TRUE)
-nhts[is.na(nhts[,"HBRESDN"]), "HBRESDN"] <- mean(nhts[,"HBRESDN"], na.rm = TRUE)
+#commenting out this code because missing values are not likely average
+#nhts[is.na(nhts[,"HHSIZE"]), "HHSIZE"] <- mean(nhts[,"HHSIZE"], na.rm = TRUE)
+#nhts[is.na(nhts[,"HHVEHCNT"]), "HHVEHCNT"] <- mean(nhts[,"HHVEHCNT"], na.rm = TRUE)
+#nhts[is.na(nhts[,"HHFAMINC"]), "HHFAMINC"] <- mean(nhts[,"HHFAMINC"], na.rm = TRUE)
+#nhts[is.na(nhts[,"HTPPOPDN"]), "HTPPOPDN"] <- mean(nhts[,"HTPPOPDN"], na.rm = TRUE)
+#nhts[is.na(nhts[,"HTRESDN"]), "HTRESDN"] <- mean(nhts[,"HTRESDN"], na.rm = TRUE)
+#nhts[is.na(nhts[,"HTEEMPDN"]), "HTEEMPDN"] <- mean(nhts[,"HTEEMPDN"], na.rm = TRUE)
+#nhts[is.na(nhts[,"HBPPOPDN"]), "HBPPOPDN"] <- mean(nhts[,"HBPPOPDN"], na.rm = TRUE)
+#nhts[is.na(nhts[,"HBRESDN"]), "HBRESDN"] <- mean(nhts[,"HBRESDN"], na.rm = TRUE)
 
 #remove HOUSEID
 nhts = within(nhts, rm(HOUSEID))
