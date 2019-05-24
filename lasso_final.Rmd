@@ -12,9 +12,11 @@ library(dplyr)
 library(MASS)
 ```
 
+
+Grab the NHTS data files from Google File Stream
 ```{r}
-veh = read.csv("vehpub.csv")
-hh = read.csv("hhpub.csv")
+veh = read.csv("/Volumes/GoogleDrive/My\ Drive/ecodatalab/econometrics/nhts/data/2017_NHTS/vehpub.csv")
+hh = read.csv("/Volumes/GoogleDrive/My\ Drive/ecodatalab/econometrics/nhts/data/2017_NHTS/hhpub.csv")
 ```
 
 
@@ -35,10 +37,6 @@ AVGINCOME[hh$HHFAMINC < 0] = NA
 hh$HHFAMINC = AVGINCOME
 
 hh$HOMEOWN[hh$HOMEOWN != 1 & hh$HOMEOWN !=2] = NA
-
-hh$CAR[hh$CAR < 0 | hh$CAR > 4] = NA
-
-hh$HH_RACE[hh$CAR < 0 | hh$CAR > 6] = NA
 
 hh$HTPPOPDN[hh$HTPPOPDN < 0] = NA
 
@@ -86,7 +84,6 @@ subset = data.frame(HOMEOWN = as.character(nhts$HOMEOWN),
                     HHSIZE = nhts$HHSIZE, 
                     HHVEHCNT = nhts$HHVEHCNT, 
                     HHFAMINC = nhts$HHFAMINC, 
-                    CAR = as.character(nhts$CAR), 
                     URBRUR = as.character(nhts$URBRUR), 
                     CENSUS_D = as.character(nhts$CENSUS_D), 
                     CENSUS_R = as.character(nhts$CENSUS_R), 
@@ -137,8 +134,9 @@ coeff = rbind(coeff, allY)
 rownames(coeff) = c(rownames(coeff)[1:(length(rownames(coeff)) - 3)],"Sample Size", "R square", "BestMile")
 ```
 
+Read the 2017 1-Year Census data from Google File Stream
 ```{r}
-census = read.csv(file = "2017_1YR_STATES_CLEAN.csv", stringsAsFactors = FALSE)
+census = read.csv(file = "/Volumes/GoogleDrive/My\ Drive/ecodatalab/census/results/STATE/2017_1YR_STATES_CLEAN.csv", stringsAsFactors = FALSE)
 geo = data.frame("state" = tolower(name))
 geo = merge(geo, census, by.x = "state", by.y = "Geo_STUSAB")
 coeff = rbind(coeff, c(NA, geo$Geo_FIPS))
